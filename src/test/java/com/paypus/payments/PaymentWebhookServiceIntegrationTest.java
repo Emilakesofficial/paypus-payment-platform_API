@@ -1,9 +1,9 @@
 package com.paypus.payments;
 
 import com.paypus.AbstractIntegrationTest;
-import com.paypus.ledger.Account;
-import com.paypus.ledger.AccountRepository;
-import com.paypus.ledger.AccountType;
+import com.paypus.outbox.EventType;
+import com.paypus.outbox.OutboxEvent;
+import com.paypus.outbox.OutboxEventRepository;
 import com.paypus.tenant.Tenant;
 import com.paypus.tenant.TenantRepository;
 import com.stripe.model.PaymentIntent;
@@ -27,7 +27,7 @@ class PaymentWebhookServiceIntegrationTest extends AbstractIntegrationTest {
     private PaymentRepository paymentRepository;
 
     @Autowired
-    private AccountRepository accountRepository;
+    private OutboxEventRepository outboxEventRepository;
 
     @Autowired
     private TenantRepository tenantRepository;
@@ -55,7 +55,7 @@ class PaymentWebhookServiceIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void handlePaymentSucceeded_capturesPaymentAndPostsBalancedLedgerEntries() {
+    void handlePaymentSucceeded_capturesPaymentAndWritesOutboxEvent() {
         PaymentIntent stripePaymentIntent = new PaymentIntent();
         stripePaymentIntent.setId(pendingPayment.getStripePaymentIntentId());
 
@@ -63,34 +63,32 @@ class PaymentWebhookServiceIntegrationTest extends AbstractIntegrationTest {
 
         Payment updated = paymentRepository.findById(pendingPayment.getId()).orElseThrow();
         assertThat(updated.getStatus()).isEqualTo(PaymentStatus.CAPTURED);
-        assertThat(updated.getLedgerTransactionId()).isNotNull();
+        assertThat(updated.getLedgerTransactionId()).isNull();
 
-        List<Account> accounts = accountRepository.findByTenantId(tenantId);
-        Account merchantBalance = accounts.stream()
-                .filter(a -> a.getAccountType() == AccountType.MERCHANT_BALANCE)
-                .findFirst().orElseThrow();
-        Account stripeClearing = accounts.stream()
-                .filter(a -> a.getAccountType() == AccountType.STRIPE_CLEARING)
-                .findFirst().orElseThrow();
+        List<OutboxEvent> events = outboxEventRepository.findByPublishedAtIsNullOrderByCreatedAtAsc();
+        OutboxEvent event = events.stream()
+                .filter(e -> e.getTenant().getId().equals(tenantId))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("No outbox event found for tenant"));
 
-        assertThat(accountRepository.computeBalance(merchantBalance.getId())).isEqualByComparingTo("75.00");
-        assertThat(accountRepository.computeBalance(stripeClearing.getId())).isEqualByComparingTo("-75.00");
+        assertThat(event.getEventType()).isEqualTo(EventType.PAYMENT_CAPTURED);
+        assertThat(event.getPayload()).contains(pendingPayment.getId().toString());
+        assertThat(event.getPublishedAt()).isNull();
     }
 
     @Test
-    void handlePaymentSucceeded_calledTwice_doesNotDoublePostLedger() {
+    void handlePaymentSucceeded_calledTwice_doesNotWriteASecondOutboxEvent() {
         PaymentIntent stripePaymentIntent = new PaymentIntent();
         stripePaymentIntent.setId(pendingPayment.getStripePaymentIntentId());
 
         paymentWebhookService.handlePaymentSucceeded(stripePaymentIntent);
         paymentWebhookService.handlePaymentSucceeded(stripePaymentIntent);
 
-        List<Account> accounts = accountRepository.findByTenantId(tenantId);
-        Account merchantBalance = accounts.stream()
-                .filter(a -> a.getAccountType() == AccountType.MERCHANT_BALANCE)
-                .findFirst().orElseThrow();
+        long count = outboxEventRepository.findByPublishedAtIsNullOrderByCreatedAtAsc().stream()
+                .filter(e -> e.getTenant().getId().equals(tenantId))
+                .count();
 
-        assertThat(accountRepository.computeBalance(merchantBalance.getId())).isEqualByComparingTo("75.00");
+        assertThat(count).isEqualTo(1);
     }
 
     @Test

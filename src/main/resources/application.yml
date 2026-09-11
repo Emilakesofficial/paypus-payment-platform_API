@@ -19,9 +19,21 @@ spring:
     enabled: true
     locations: classpath:db/migration
 
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      group-id: paypus-payment-platform
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserialization: org.apache.kafka.common.serialization.StringDeserialization
+      auto-offset-reset: earliest
+
 server:
   port: 8081
 
 stripe:
   secret-key: ${STRIPE_SECRET_KEY}
   webhook-secret: ${STRIPE_WEBHOOK_SECRET}
+

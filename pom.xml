@@ -92,6 +92,12 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Spring Kafka: lets us produce to and consume from Kafka topics -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+
         <!-- Testcontainers: spins up a REAL Postgres in Docker during tests -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
