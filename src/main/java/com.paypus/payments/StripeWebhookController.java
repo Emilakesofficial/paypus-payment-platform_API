@@ -1,8 +1,10 @@
 package com.paypus.payments;
 
+import com.paypus.settlement.SettlementWebhookService;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.model.Event;
 import com.stripe.model.PaymentIntent;
+import com.stripe.model.Payout;
 import com.stripe.net.Webhook;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -16,12 +18,17 @@ import org.springframework.web.bind.annotation.RestController;
 public class StripeWebhookController {
 
     private final PaymentWebhookService paymentWebhookService;
+    private final SettlementWebhookService settlementWebhookService;
 
     @Value("${stripe.webhook-secret}")
     private String webhookSecret;
 
-    public StripeWebhookController(PaymentWebhookService paymentWebhookService) {
+    public StripeWebhookController(
+            PaymentWebhookService paymentWebhookService,
+            SettlementWebhookService settlementWebhookService
+    ) {
         this.paymentWebhookService = paymentWebhookService;
+        this.settlementWebhookService = settlementWebhookService;
     }
 
     @PostMapping("/v1/webhooks/stripe")
@@ -36,12 +43,27 @@ public class StripeWebhookController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid signature");
         }
 
-        if ("payment_intent.succeeded".equals(event.getType())) {
-            PaymentIntent paymentIntent = (PaymentIntent) event.getDataObjectDeserializer()
-                    .getObject()
-                    .orElseThrow(() -> new IllegalStateException("Could not deserialize PaymentIntent from event"));
-
-            paymentWebhookService.handlePaymentSucceeded(paymentIntent);
+        switch (event.getType()) {
+            case "payment_intent.succeeded" -> {
+                PaymentIntent paymentIntent = (PaymentIntent) event.getDataObjectDeserializer()
+                        .getObject()
+                        .orElseThrow(() -> new IllegalStateException("Could not deserialize PaymentIntent from event"));
+                paymentWebhookService.handlePaymentSucceeded(paymentIntent);
+            }
+            case "payout.paid" -> {
+                Payout payout = (Payout) event.getDataObjectDeserializer()
+                        .getObject()
+                        .orElseThrow(() -> new IllegalStateException("Could not deserialize Payout from event"));
+                settlementWebhookService.handlePayoutPaid(payout);
+            }
+            case "payout.failed" -> {
+                Payout payout = (Payout) event.getDataObjectDeserializer()
+                        .getObject()
+                        .orElseThrow(() -> new IllegalStateException("Could not deserialize Payout from event"));
+                settlementWebhookService.handlePayoutFailed(payout);
+            }
+            default -> {
+            }
         }
 
         return ResponseEntity.ok("received");

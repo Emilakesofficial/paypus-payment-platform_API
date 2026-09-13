@@ -1,4 +1,4 @@
-package com.paypus.payments;
+package com.paypus.settlement;
 
 import com.paypus.tenant.Tenant;
 import jakarta.persistence.*;
@@ -13,12 +13,12 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "payment")
+@Table(name = "settlement_batch")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Payment {
+public class SettlementBatch {
     @Id
     @UuidGenerator
     private UUID id;
@@ -27,29 +27,28 @@ public class Payment {
     @JoinColumn(name = "tenant_id", nullable = false)
     private Tenant tenant;
 
-    @Column(name = "stripe_payment_intent_id", nullable = false)
-    private String stripePaymentIntentId;
-
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private BigDecimal amount;
+    private SettlementStatus status;
+
+    @Column(name = "total_amount", nullable = false)
+    private BigDecimal totalAmount;
 
     @Column(nullable = false)
     private String currency;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private PaymentStatus status;
-
     @Column(name = "ledger_transaction_id")
     private UUID ledgerTransactionId;
 
-    @Column(name = "settlement_batch_id")
-    private UUID settlementBatchId;
+    @Column(name = "stripe_payout_id")
+    private String stripePayoutId;
+
+    @Column(name = "failure_reason")
+    private String failureReason;
 
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
-
 }
