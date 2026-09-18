@@ -1,5 +1,7 @@
 package com.paypus.payments;
 
+import com.paypus.webhooks.WebhookDelivery;
+import com.paypus.webhooks.WebhookDeliveryService;
 import com.stripe.model.Refund;
 import com.stripe.param.RefundCreateParams;
 import com.paypus.ledger.AccountRepository;
@@ -30,7 +32,7 @@ public class PaymentService {
     private final AccountRepository accountRepository;
     private final LedgerService ledgerService;
 
-    public PaymentService(PaymentRepository paymentRepository, TenantRepository tenantRepository,  AccountRepository accountRepository, LedgerService ledgerService) {
+    public PaymentService(PaymentRepository paymentRepository, TenantRepository tenantRepository,  AccountRepository accountRepository, LedgerService ledgerService,  WebhookDeliveryService webhookDeliveryService) {
         this.paymentRepository = paymentRepository;
         this.tenantRepository = tenantRepository;
         this.accountRepository = accountRepository;

@@ -3,8 +3,8 @@ services:
     image: postgres:16
     container_name: paypus-postgres
     environment:
-      POSTGRES_USER: paypus
-      POSTGRES_PASSWORD: paypus
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: paypus
     ports:
       - "5432:5432"
@@ -30,7 +30,7 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:19093
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      CLUSTER_ID: "paypus-kafka-cluster-01"
+      CLUSTER_ID: ${KAFKA_CLUSTER_ID}
 
 volumes:
   paypus-postgres-data:

@@ -18,7 +18,8 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth.requestMatchers("/v1/webhooks/**").permitAll().anyRequest().authenticated())
+                .authorizeHttpRequests(auth -> auth.requestMatchers("/v1/webhooks/**").permitAll().requestMatchers("/test/**").permitAll()
+                        .anyRequest().authenticated())
                 .addFilterBefore(
                         new ApiKeyAuthFilter(apiKeyRepository),
                         UsernamePasswordAuthenticationFilter.class
